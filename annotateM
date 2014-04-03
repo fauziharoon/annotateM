@@ -96,12 +96,11 @@ checkAndRunCommand("cat",
 			-evalue => $global_options->{'evalue'},
 			-query => "-",
 			"> $locus.faaVSimg.blastp",
-			#-num_threads => $global_options->{'threads'},
 			]], DIE_ON_FAILURE);
 }
 
-# reciprocal blast of img positive hits to genome ORF
-if (! -e "./subsetimgVS$locus.faa.blastp")
+# reciprocal blast of img positive hits against genome ORF
+if (! -e "./subsetimg.faaVS$locus.faa.blastp")
 {
 print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
 checkAndRunCommand("contig_extractor.pl",
@@ -110,9 +109,26 @@ checkAndRunCommand("contig_extractor.pl",
 			-d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
 			-b => '',
 			-S => '',
-			-o => "subsetimgVS$locus.faa.blastp",
-			]]
+			-o => "subsetimg.faa",
+			]], DIE_ON_FAILURE);
 
+checkAndRunCommand("makeblastdb",
+			[[
+			-in => "prokka_annotation/$locus.faa",
+			-dbtype => "prot",
+			]], DIE_ON_FAILURE);
+
+checkAndRunCommand("blastp",
+			[[
+			-query => "subsetimg.faa",
+			-db => "prokka_annotation/$locus.faa",
+			-outfmt => 6,
+			-max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
+			-num_threads => $global_options->{'threads'},
+			-out => "subsetimg.faaVS$locus.faa.blastp",
+			]], DIE_ON_FAILURE);
+}
 
 # blast against uniref				
 if (! -e "./$locus.faaVSuniref90.blastp")
@@ -133,6 +149,38 @@ checkAndRunCommand("cat",[[
                         -query => "-",
                         "> $locus.faaVSuniref90.blastp",
                         #-num_threads => $global_options->{'threads'},
+                        ]], DIE_ON_FAILURE);
+}
+
+# reciprocal blast of Uniref positive hits against genome ORF
+if (! -e "./subsetuniref.faaVS$locus.faa.blastp")
+{
+print "Reciprocal BLASTing positive Uniref hits to $locus.faa ...............\n";
+
+checkAndRunCommand("contig_extractor.pl",
+                        [[
+                        -i => "$locus.faaVSuniref90.blastp",
+                        -d => "/srv/whitlam/home/users/uqmharoo/Uniref_db/uniref90.fasta",
+                        -b => '',
+                        -S => '',
+                        -o => "subsetuniref.faa",
+                        ]], DIE_ON_FAILURE);
+
+#checkAndRunCommand("makeblastdb",
+ #                       [[
+  #                      -in => "subsetuniref.faa",
+   #                     -dbtype => "prot",
+    #                    ]], DIE_ON_FAILURE);
+
+checkAndRunCommand("blastp",
+                        [[
+                        -query => "subsetuniref.faa",
+                        -db => "prokka_annotation/$locus.faa",
+                        -outfmt => 6,
+                        -max_target_seqs => 1,
+                        -evalue => $global_options->{'evalue'},
+                        -num_threads => $global_options->{'threads'},
+                        -out => "subsetuniref.faaVS$locus.faa.blastp",
                         ]], DIE_ON_FAILURE);
 }
 
@@ -281,7 +329,7 @@ sub checkAndRunCommand
 
     my $cmd_str = $cmd . " " . $param_str;
     
-    print $cmd_str; 
+    print "The command currently running:\t$cmd_str\n"; 
     logExternalCommand($cmd_str);
 
     # make sure that all went well
