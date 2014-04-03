@@ -80,7 +80,7 @@ my $locus = $global_options->{'locustag'};
 # blast against img
 if (! -e "./$locus.faaVSimg.blastp")
 {
-print "BLASTing against IMG 4.0 database\n";
+print "BLASTing against IMG 4.0 database...............\n";
 checkAndRunCommand("cat", 
 			[[ 
 			"prokka_annotation/$locus.faa |",	
@@ -93,16 +93,31 @@ checkAndRunCommand("cat",
 			-db => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
 			-outfmt => 6,
 			-max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
 			-query => "-",
 			"> $locus.faaVSimg.blastp",
 			#-num_threads => $global_options->{'threads'},
 			]], DIE_ON_FAILURE);
 }
 
+# reciprocal blast of img positive hits to genome ORF
+if (! -e "./subsetimgVS$locus.faa.blastp")
+{
+print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
+checkAndRunCommand("contig_extractor.pl",
+			[[
+			-i => "$locus.faaVSimg.blastp",
+			-d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
+			-b => '',
+			-S => '',
+			-o => "subsetimgVS$locus.faa.blastp",
+			]]
+
+
 # blast against uniref				
 if (! -e "./$locus.faaVSuniref90.blastp")
 {
-print "BLASTing against Uniref90 database\n";
+print "BLASTing against Uniref90 database................\n";
 checkAndRunCommand("cat",[[
 			"prokka_annotation/$locus.faa |",
                         "parallel",
@@ -114,11 +129,14 @@ checkAndRunCommand("cat",[[
 			-db => "/srv/whitlam/home/users/uqmharoo/Uniref_db/uniref90.fasta",
 			-outfmt => 6,
                         -max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
                         -query => "-",
                         "> $locus.faaVSuniref90.blastp",
                         #-num_threads => $global_options->{'threads'},
                         ]], DIE_ON_FAILURE);
 }
+
+
 ######################################################################
 # CUSTOM SUBS
 ######################################################################
@@ -133,7 +151,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "in|i:s", "locustag|l:s", "kingdom|k:s", "threads|t:s");
+    my @standard_options = ( "help|h+", "in|i:s", "locustag|l:s", "kingdom|k:s", "threads|t:s", "evalue|e:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -346,7 +364,7 @@ __DATA__
 
 =head1 DESCRIPTION
 
-   Insert detailed description here
+   Want to annotate your genome? annotateM!
 
 =head1 SYNOPSIS
 
@@ -356,6 +374,7 @@ __DATA__
       -l locustag		   	Name of locus tag
       -k kingdom (Bacteria/Archaea) 	Kingdom of genome to be annotated
       -t threads			Number of threads
+      -e evalue				Evalue for BLAST, recommend 1e-3	
       [-help -h]                   	Displays basic usage information
          
 =cut
