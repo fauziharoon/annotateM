@@ -60,123 +60,123 @@ my $global_options = checkParams();
 # CODE HERE
 ######################################################################
 
-# # check that the file exists
-# checkFileExists($global_options->{'in'});
+# check that the file exists
+checkFileExists($global_options->{'in'});
 
-# # run prokka to generate the ORFs and also prokka annotations
-# checkAndRunCommand("prokka", [{
-                                   # "--locustag" =>  $global_options->{'locustag'},
-				   # "--outdir" => "prokka_annotation",
-				   # "--prefix" => $global_options->{'locustag'},
-				   # "--kingdom" =>  $global_options->{'kingdom'},
-				   # "--cpus" =>  $global_options->{'threads'},
-				   # "--keep_names",
-				   # $global_options->{'in'},	
-                                   # }], DIE_ON_FAILURE);
+# run prokka to generate the ORFs and also prokka annotations
+checkAndRunCommand("prokka", [{
+                                   "--locustag" =>  $global_options->{'locustag'},
+				   "--outdir" => "prokka_annotation",
+				   "--prefix" => $global_options->{'locustag'},
+				   "--kingdom" =>  $global_options->{'kingdom'},
+				   "--cpus" =>  $global_options->{'threads'},
+				   "--keep_names",
+				   $global_options->{'in'},	
+                                   }], DIE_ON_FAILURE);
 
 # identify the ORF called amino acid fasta file for blast-ing
 my $locus = $global_options->{'locustag'};
 
-# # blast against img
-# if (! -e "./$locus.faaVSimg.blastp")
-# {
-# print "BLASTing against IMG 4.0 database...............\n";
-# checkAndRunCommand("cat", 
-			# [[ 
-			# "prokka_annotation/$locus.faa |",	
-			# "parallel",
-			# "--block"=> "100k", 
-			# "--recstart",
-			# "'>'",
-			# "--pipe",
-			# "blastp",
-			# -db => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
-			# -outfmt => 6,
-			# -max_target_seqs => 1,
-			# -evalue => $global_options->{'evalue'},
-			# -query => "-",
-			# "> $locus.faaVSimg.blastp",
-			# ]], DIE_ON_FAILURE);
-# }
+# blast against img
+if (! -e "./$locus.faaVSimg.blastp")
+{
+print "BLASTing against IMG 4.0 database...............\n";
+checkAndRunCommand("cat", 
+			[[ 
+			"prokka_annotation/$locus.faa |",	
+			"parallel",
+			"--block"=> "100k", 
+			"--recstart",
+			"'>'",
+			"--pipe",
+			"blastp",
+			-db => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
+			-outfmt => 6,
+			-max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
+			-query => "-",
+			"> $locus.faaVSimg.blastp",
+			]], DIE_ON_FAILURE);
+}
 
-# # reciprocal blast of img positive hits against genome ORF
-# if (! -e "./subsetimg.faaVS$locus.faa.blastp")
-# {
-# print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
-# checkAndRunCommand("contig_extractor.pl",
-			# [[
-			# -i => "$locus.faaVSimg.blastp",
-			# -d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
-			# -b => '',
-			# -S => '',
-			# -o => "subsetimg.faa",
-			# ]], DIE_ON_FAILURE);
+# reciprocal blast of img positive hits against genome ORF
+if (! -e "./subsetimg.faaVS$locus.faa.blastp")
+{
+print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
+checkAndRunCommand("contig_extractor.pl",
+			[[
+			-i => "$locus.faaVSimg.blastp",
+			-d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
+			-b => '',
+			-S => '',
+			-o => "subsetimg.faa",
+			]], DIE_ON_FAILURE);
 
-# checkAndRunCommand("makeblastdb",
-			# [[
-			# -in => "prokka_annotation/$locus.faa",
-			# -dbtype => "prot",
-			# ]], DIE_ON_FAILURE);
+checkAndRunCommand("makeblastdb",
+			[[
+			-in => "prokka_annotation/$locus.faa",
+			-dbtype => "prot",
+			]], DIE_ON_FAILURE);
 
-# checkAndRunCommand("blastp",
-			# [[
-			# -query => "subsetimg.faa",
-			# -db => "prokka_annotation/$locus.faa",
-			# -outfmt => 6,
-			# -max_target_seqs => 1,
-			# -evalue => $global_options->{'evalue'},
-			# -num_threads => $global_options->{'threads'},
-			# -out => "subsetimg.faaVS$locus.faa.blastp",
-			# ]], DIE_ON_FAILURE);
-# }
+checkAndRunCommand("blastp",
+			[[
+			-query => "subsetimg.faa",
+			-db => "prokka_annotation/$locus.faa",
+			-outfmt => 6,
+			-max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
+			-num_threads => $global_options->{'threads'},
+			-out => "subsetimg.faaVS$locus.faa.blastp",
+			]], DIE_ON_FAILURE);
+}
 
-# # blast against uniref				
-# if (! -e "./$locus.faaVSuniref90.blastp")
-# {
-# print "BLASTing against Uniref90 database................\n";
-# checkAndRunCommand("cat",[[
-			# "prokka_annotation/$locus.faa |",
-                        # "parallel",
-                        # "--block"=> "100k",
-                        # "--recstart",
-                        # "'>'",
-                        # "--pipe",
-			# "blastp",
-			# -db => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
-			# -outfmt => 6,
-                        # -max_target_seqs => 1,
-			# -evalue => $global_options->{'evalue'},
-                        # -query => "-",
-                        # "> $locus.faaVSuniref90.blastp",
-                        # #-num_threads => $global_options->{'threads'},
-                        # ]], DIE_ON_FAILURE);
-# }
+# blast against uniref				
+if (! -e "./$locus.faaVSuniref90.blastp")
+{
+print "BLASTing against Uniref90 database................\n";
+checkAndRunCommand("cat",[[
+			"prokka_annotation/$locus.faa |",
+                        "parallel",
+                        "--block"=> "100k",
+                        "--recstart",
+                        "'>'",
+                        "--pipe",
+			"blastp",
+			-db => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
+			-outfmt => 6,
+                        -max_target_seqs => 1,
+			-evalue => $global_options->{'evalue'},
+                        -query => "-",
+                        "> $locus.faaVSuniref90.blastp",
+                        #-num_threads => $global_options->{'threads'},
+                        ]], DIE_ON_FAILURE);
+}
 
-# # reciprocal blast of Uniref positive hits against genome ORF
-# if (! -e "./subsetuniref.faaVS$locus.faa.blastp")
-# {
-# print "Reciprocal BLASTing positive Uniref hits to $locus.faa ...............\n";
+# reciprocal blast of Uniref positive hits against genome ORF
+if (! -e "./subsetuniref.faaVS$locus.faa.blastp")
+{
+print "Reciprocal BLASTing positive Uniref hits to $locus.faa ...............\n";
 
-# checkAndRunCommand("contig_extractor.pl",
-                        # [[
-                        # -i => "$locus.faaVSuniref90.blastp",
-                        # -d => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
-                        # -b => '',
-                        # -S => '',
-                        # -o => "subsetuniref.faa",
-                        # ]], DIE_ON_FAILURE);
+checkAndRunCommand("contig_extractor.pl",
+                        [[
+                        -i => "$locus.faaVSuniref90.blastp",
+                        -d => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
+                        -b => '',
+                        -S => '',
+                        -o => "subsetuniref.faa",
+                        ]], DIE_ON_FAILURE);
 
-# checkAndRunCommand("blastp",
-                        # [[
-                        # -query => "subsetuniref.faa",
-                        # -db => "prokka_annotation/$locus.faa",
-                        # -outfmt => 6,
-                        # -max_target_seqs => 1,
-                        # -evalue => $global_options->{'evalue'},
-                        # -num_threads => $global_options->{'threads'},
-                        # -out => "subsetuniref.faaVS$locus.faa.blastp",
-                        # ]], DIE_ON_FAILURE);
-# }
+checkAndRunCommand("blastp",
+                        [[
+                        -query => "subsetuniref.faa",
+                        -db => "prokka_annotation/$locus.faa",
+                        -outfmt => 6,
+                        -max_target_seqs => 1,
+                        -evalue => $global_options->{'evalue'},
+                        -num_threads => $global_options->{'threads'},
+                        -out => "subsetuniref.faaVS$locus.faa.blastp",
+                        ]], DIE_ON_FAILURE);
+}
 
 # hashes for img
 my %hash = ();
