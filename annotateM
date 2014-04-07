@@ -60,130 +60,227 @@ my $global_options = checkParams();
 # CODE HERE
 ######################################################################
 
-# check that the file exists
-checkFileExists($global_options->{'in'});
+# # check that the file exists
+# checkFileExists($global_options->{'in'});
 
-# run prokka to generate the ORFs and also prokka annotations
-checkAndRunCommand("prokka", [{
-                                   "--locustag" =>  $global_options->{'locustag'},
-				   "--outdir" => "prokka_annotation",
-				   "--prefix" => $global_options->{'locustag'},
-				   "--kingdom" =>  $global_options->{'kingdom'},
-				   "--cpus" =>  $global_options->{'threads'},
-				   "--keep_names",
-				   $global_options->{'in'},	
-                                   }], DIE_ON_FAILURE);
+# # run prokka to generate the ORFs and also prokka annotations
+# checkAndRunCommand("prokka", [{
+                                   # "--locustag" =>  $global_options->{'locustag'},
+				   # "--outdir" => "prokka_annotation",
+				   # "--prefix" => $global_options->{'locustag'},
+				   # "--kingdom" =>  $global_options->{'kingdom'},
+				   # "--cpus" =>  $global_options->{'threads'},
+				   # "--keep_names",
+				   # $global_options->{'in'},	
+                                   # }], DIE_ON_FAILURE);
 
 # identify the ORF called amino acid fasta file for blast-ing
 my $locus = $global_options->{'locustag'};
 
-# blast against img
-if (! -e "./$locus.faaVSimg.blastp")
+# # blast against img
+# if (! -e "./$locus.faaVSimg.blastp")
+# {
+# print "BLASTing against IMG 4.0 database...............\n";
+# checkAndRunCommand("cat", 
+			# [[ 
+			# "prokka_annotation/$locus.faa |",	
+			# "parallel",
+			# "--block"=> "100k", 
+			# "--recstart",
+			# "'>'",
+			# "--pipe",
+			# "blastp",
+			# -db => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
+			# -outfmt => 6,
+			# -max_target_seqs => 1,
+			# -evalue => $global_options->{'evalue'},
+			# -query => "-",
+			# "> $locus.faaVSimg.blastp",
+			# ]], DIE_ON_FAILURE);
+# }
+
+# # reciprocal blast of img positive hits against genome ORF
+# if (! -e "./subsetimg.faaVS$locus.faa.blastp")
+# {
+# print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
+# checkAndRunCommand("contig_extractor.pl",
+			# [[
+			# -i => "$locus.faaVSimg.blastp",
+			# -d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
+			# -b => '',
+			# -S => '',
+			# -o => "subsetimg.faa",
+			# ]], DIE_ON_FAILURE);
+
+# checkAndRunCommand("makeblastdb",
+			# [[
+			# -in => "prokka_annotation/$locus.faa",
+			# -dbtype => "prot",
+			# ]], DIE_ON_FAILURE);
+
+# checkAndRunCommand("blastp",
+			# [[
+			# -query => "subsetimg.faa",
+			# -db => "prokka_annotation/$locus.faa",
+			# -outfmt => 6,
+			# -max_target_seqs => 1,
+			# -evalue => $global_options->{'evalue'},
+			# -num_threads => $global_options->{'threads'},
+			# -out => "subsetimg.faaVS$locus.faa.blastp",
+			# ]], DIE_ON_FAILURE);
+# }
+
+# # blast against uniref				
+# if (! -e "./$locus.faaVSuniref90.blastp")
+# {
+# print "BLASTing against Uniref90 database................\n";
+# checkAndRunCommand("cat",[[
+			# "prokka_annotation/$locus.faa |",
+                        # "parallel",
+                        # "--block"=> "100k",
+                        # "--recstart",
+                        # "'>'",
+                        # "--pipe",
+			# "blastp",
+			# -db => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
+			# -outfmt => 6,
+                        # -max_target_seqs => 1,
+			# -evalue => $global_options->{'evalue'},
+                        # -query => "-",
+                        # "> $locus.faaVSuniref90.blastp",
+                        # #-num_threads => $global_options->{'threads'},
+                        # ]], DIE_ON_FAILURE);
+# }
+
+# # reciprocal blast of Uniref positive hits against genome ORF
+# if (! -e "./subsetuniref.faaVS$locus.faa.blastp")
+# {
+# print "Reciprocal BLASTing positive Uniref hits to $locus.faa ...............\n";
+
+# checkAndRunCommand("contig_extractor.pl",
+                        # [[
+                        # -i => "$locus.faaVSuniref90.blastp",
+                        # -d => "/srv/db/uniprot/uniref-20140403/uniref90.fasta",
+                        # -b => '',
+                        # -S => '',
+                        # -o => "subsetuniref.faa",
+                        # ]], DIE_ON_FAILURE);
+
+# checkAndRunCommand("blastp",
+                        # [[
+                        # -query => "subsetuniref.faa",
+                        # -db => "prokka_annotation/$locus.faa",
+                        # -outfmt => 6,
+                        # -max_target_seqs => 1,
+                        # -evalue => $global_options->{'evalue'},
+                        # -num_threads => $global_options->{'threads'},
+                        # -out => "subsetuniref.faaVS$locus.faa.blastp",
+                        # ]], DIE_ON_FAILURE);
+# }
+
+# hashes for img
+my %hash = ();
+my %hash2 = ();
+my %hash3 =();
+
+# read the img blast output and store in hash
+open my $IMGblast, "./$locus.faaVSimg.blastp", or die "Couldn't open file $locus.faaVSimg.blastp\n";
+while (<$IMGblast>)
 {
-print "BLASTing against IMG 4.0 database...............\n";
-checkAndRunCommand("cat", 
-			[[ 
-			"prokka_annotation/$locus.faa |",	
-			"parallel",
-			"--block"=> "100k", 
-			"--recstart",
-			"'>'",
-			"--pipe",
-			"blastp",
-			-db => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
-			-outfmt => 6,
-			-max_target_seqs => 1,
-			-evalue => $global_options->{'evalue'},
-			-query => "-",
-			"> $locus.faaVSimg.blastp",
-			]], DIE_ON_FAILURE);
+	chomp $_;
+	my @columns = split (/\t/, $_);
+	# store the orfid which is in columns[0]
+	my $orfid = $columns[0];
+	if ($columns[11] > 60)
+	{
+		# key is $orfid while the value of the key in $columns[1] is the IMG id 
+		$hash{$orfid} = $columns[1];
+		$hash{$columns[1]} = $columns[0]; 
+		$hash2{$columns[1]} = "$columns[0]\t$columns[11]";	
+	}
 }
 
-# reciprocal blast of img positive hits against genome ORF
-if (! -e "./subsetimg.faaVS$locus.faa.blastp")
+# read img id2names.txt
+open my $imgid2names, "/srv/db/img/4.0/dereplicated/id2names.txt", or die "Couldn't open id2names.txt\n";
+open my $img_temp_OUT, ">img_output_temp.txt";
+while (<$imgid2names>)
 {
-print "Reciprocal BLASTing positive IMG hits to $locus.faa ...............\n";
-checkAndRunCommand("contig_extractor.pl",
-			[[
-			-i => "$locus.faaVSimg.blastp",
-			-d => "/srv/db/img/4.0/dereplicated/img_dereplicated_species.genes.faa",
-			-b => '',
-			-S => '',
-			-o => "subsetimg.faa",
-			]], DIE_ON_FAILURE);
-
-checkAndRunCommand("makeblastdb",
-			[[
-			-in => "prokka_annotation/$locus.faa",
-			-dbtype => "prot",
-			]], DIE_ON_FAILURE);
-
-checkAndRunCommand("blastp",
-			[[
-			-query => "subsetimg.faa",
-			-db => "prokka_annotation/$locus.faa",
-			-outfmt => 6,
-			-max_target_seqs => 1,
-			-evalue => $global_options->{'evalue'},
-			-num_threads => $global_options->{'threads'},
-			-out => "subsetimg.faaVS$locus.faa.blastp",
-			]], DIE_ON_FAILURE);
+	chomp $_;
+	my @columns = split (/\t/, $_);
+	if (exists $hash2{$columns[0]})
+	{	
+		$hash3{$columns[0]} = "$hash2{$columns[0]}\t$columns[1]\t$columns[2]";	
+		print {$img_temp_OUT} "$hash2{$columns[0]}\t$columns[1]\t$columns[2]\n";
+	}
 }
 
-# blast against uniref				
-if (! -e "./$locus.faaVSuniref90.blastp")
+close($IMGblast);
+close($imgid2names);
+close($img_temp_OUT);
+
+# read my reciprocal img blast output and store in hash
+open my $rIMGblast, "./subsetimg.faaVS$locus.faa.blastp", or die "Couldn't open file subsetimg.faaVS$locus.faa.blastp\n";
+open my $img_temp_OUT2, ">img_output_temp2.txt";
+while (<$rIMGblast>)
 {
-print "BLASTing against Uniref90 database................\n";
-checkAndRunCommand("cat",[[
-			"prokka_annotation/$locus.faa |",
-                        "parallel",
-                        "--block"=> "100k",
-                        "--recstart",
-                        "'>'",
-                        "--pipe",
-			"blastp",
-			-db => "/srv/whitlam/home/users/uqmharoo/Uniref_db/uniref90.fasta",
-			-outfmt => 6,
-                        -max_target_seqs => 1,
-			-evalue => $global_options->{'evalue'},
-                        -query => "-",
-                        "> $locus.faaVSuniref90.blastp",
-                        #-num_threads => $global_options->{'threads'},
-                        ]], DIE_ON_FAILURE);
+	chomp $_;
+	my @columns = split (/\t/, $_);
+	if (exists $hash{$columns[0]})
+	{
+		print {$img_temp_OUT2} "$hash3{$columns[0]}\treciprocal\n";
+	}
 }
 
-# reciprocal blast of Uniref positive hits against genome ORF
-if (! -e "./subsetuniref.faaVS$locus.faa.blastp")
+#hashes for uniref	
+my %hash4 = ();
+my %hash5 =();
+my %hash6 = ();
+
+#read uniref blast and store in hash
+open my $unirefblast, "./$locus.faaVSuniref90.blastp", or die "Couldn't open file $locus.faaVSuniref90.blastp\n";
+while (<$unirefblast>)
 {
-print "Reciprocal BLASTing positive Uniref hits to $locus.faa ...............\n";
-
-checkAndRunCommand("contig_extractor.pl",
-                        [[
-                        -i => "$locus.faaVSuniref90.blastp",
-                        -d => "/srv/whitlam/home/users/uqmharoo/Uniref_db/uniref90.fasta",
-                        -b => '',
-                        -S => '',
-                        -o => "subsetuniref.faa",
-                        ]], DIE_ON_FAILURE);
-
-#checkAndRunCommand("makeblastdb",
- #                       [[
-  #                      -in => "subsetuniref.faa",
-   #                     -dbtype => "prot",
-    #                    ]], DIE_ON_FAILURE);
-
-checkAndRunCommand("blastp",
-                        [[
-                        -query => "subsetuniref.faa",
-                        -db => "prokka_annotation/$locus.faa",
-                        -outfmt => 6,
-                        -max_target_seqs => 1,
-                        -evalue => $global_options->{'evalue'},
-                        -num_threads => $global_options->{'threads'},
-                        -out => "subsetuniref.faaVS$locus.faa.blastp",
-                        ]], DIE_ON_FAILURE);
+	chomp $_;
+        my @columns = split (/\t/, $_);
+	if ($columns[11] > 60)
+	{
+		$hash4{$columns[0]} = $columns[1];
+		$hash4{$columns[1]} = $columns[0];
+		$hash5{$columns[1]} = "$columns[0]\t$columns[11]";
+	}
 }
 
+#read uniref id2names.txt
+open my $unirefid2names, "/srv/db/uniprot/uniref-20140403/uniref90_id2names.txt", or die "Couldn't open id2names.txt\n";
+open my $uniref_temp_OUT, ">uniref_output_temp.txt";
+while (<$unirefid2names>)
+{
+	chomp $_;
+        my @columns = split (/\t/, $_);
+	if (exists $hash5{$columns[0]})
+        {
+                $hash6{$columns[0]} = "$hash5{$columns[0]}\t$columns[1]\t$columns[2]";
+                print {$uniref_temp_OUT} "$hash5{$columns[0]}\t$columns[1]\t$columns[2]\n";
+        }
+}
+
+close($unirefblast);
+close($unirefid2names);
+close($uniref_temp_OUT);
+
+# read my reciprocal img blast output and store in hash
+open my $runirefblast, "./subsetuniref.faaVS$locus.faa.blastp", or die "Couldn't open file subsetuniref.faaVS$locus.faa.blastp\n";
+open my $uniref_temp_OUT2, ">uniref_output_temp2.txt";
+while (<$runirefblast>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if (exists $hash4{$columns[0]})
+        {
+                print {$uniref_temp_OUT2} "$hash6{$columns[0]}\treciprocal\n";
+        }
+}
+		
 
 ######################################################################
 # CUSTOM SUBS
