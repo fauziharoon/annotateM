@@ -178,6 +178,71 @@ checkAndRunCommand("blastp",
                         ]], DIE_ON_FAILURE);
 }
 
+# blast against COG
+if (! -e "./$locus.faaVSCOG.blastp")
+{
+print "BLASTing against COG database................\n";
+checkAndRunCommand("cat",[[
+                        "prokka_annotation/$locus.faa |",
+                        "parallel",
+                        "--block"=> "100k",
+                        "--recstart",
+                        "'>'",
+                        "--pipe",
+                        "blastp",
+                        -db => "/srv/db/cog/cog_blast_prot_db",
+                        -outfmt => 6,
+                        -max_target_seqs => 1,
+                        -evalue => $global_options->{'evalue'},
+                        -query => "-",
+                        "> $locus.faaVSCOG.blastp",
+                        #-num_threads => $global_options->{'threads'},
+                         ]], DIE_ON_FAILURE);
+}
+
+# HMMSCAN against PFAM
+if (! -e "./$locus.faaVSPfam-A.hmm.hmmscanned")
+{
+print "HMMscanning against Pfam database................\n";
+checkAndRunCommand("pfam_scan.pl",[[
+			-cpu => $global_options->{'threads'}, 
+			-e_seq => $global_options->{'evalue'},
+			-outfile => "$locus.faaVSPfam-A.hmm.hmmscanned",
+			-fasta => "prokka_annotation/$locus.faa",
+			-dir => "/srv/db/pfam/27",
+			]], DIE_ON_FAILURE);
+}
+
+# HMMSCAN against TIGRfam
+if (! -e "./$locus.faaVStigr_all.hmm.hmmscanned")
+{
+print "HMMscanning against TIGRfam database................\n";
+checkAndRunCommand("hmmscan",[[
+			"--tblout" => "$locus.faaVStigr_all.hmm.hmmscanned",
+			"--noali",
+			-E => $global_options->{'evalue'},
+			"--cpu" => $global_options->{'threads'},
+			"/srv/db/tigrfam/14.0/TIGRFAMs_14.0_HMM/tigr_all.hmm",
+			"prokka_annotation/$locus.faa",
+			]], DIE_ON_FAILURE);
+}
+			
+# convert the hmmscan output to tab delimited
+checkAndRunCommand("awk",[[
+                       "'{\$1=\$1}{ print }'",
+			"$locus.faaVSPfam-A.hmm.hmmscanned",
+			"| sed 's/\\s/\\t/g'",
+			"> $locus.faaVSPfam-A.hmm.hmmscanned.tab",
+                      ]], DIE_ON_FAILURE);
+
+checkAndRunCommand("awk",[[
+			"'{\$1=\$1}{ print }'",
+                       "$locus.faaVStigr_all.hmm.hmmscanned",
+			"| sed 's/\\s/\\t/g'",
+                       "> $locus.faaVStigr_all.hmm.hmmscanned.tab",
+                       ]], DIE_ON_FAILURE);
+
+
 # hashes for img
 my %hash = ();
 my %hash2 = ();
@@ -196,7 +261,7 @@ while (<$IMGblast>)
 		# key is $orfid while the value of the key in $columns[1] is the IMG id 
 		$hash{$orfid} = $columns[1];
 		$hash{$columns[1]} = $columns[0]; 
-		$hash2{$columns[1]} = "$columns[0]\t$columns[11]";	
+		$hash2{$columns[1]} = "$columns[0]\t$columns[10]\t$columns[11]";	
 	}
 }
 
@@ -231,12 +296,14 @@ while (<$rIMGblast>)
 	}
 }
 
-#hashes for uniref	
+close($img_temp_OUT2);
+
+# hashes for uniref	
 my %hash4 = ();
 my %hash5 =();
 my %hash6 = ();
 
-#read uniref blast and store in hash
+# read uniref blast and store in hash
 open my $unirefblast, "./$locus.faaVSuniref90.blastp", or die "Couldn't open file $locus.faaVSuniref90.blastp\n";
 while (<$unirefblast>)
 {
@@ -246,11 +313,11 @@ while (<$unirefblast>)
 	{
 		$hash4{$columns[0]} = $columns[1];
 		$hash4{$columns[1]} = $columns[0];
-		$hash5{$columns[1]} = "$columns[0]\t$columns[11]";
+		$hash5{$columns[1]} = "$columns[0]\t$columns[10]\t$columns[11]";
 	}
 }
 
-#read uniref id2names.txt
+# read uniref id2names.txt
 open my $unirefid2names, "/srv/db/uniprot/uniref-20140403/uniref90_id2names.txt", or die "Couldn't open id2names.txt\n";
 open my $uniref_temp_OUT, ">uniref_output_temp.txt";
 while (<$unirefid2names>)
@@ -280,7 +347,102 @@ while (<$runirefblast>)
                 print {$uniref_temp_OUT2} "$hash6{$columns[0]}\treciprocal\n";
         }
 }
-		
+
+close($uniref_temp_OUT2);
+
+# hashes for pfam
+my %hash7 = ();
+my %hash8 = ();
+my %hash9 = ();
+
+# read pfam hmmscan output and store in hash
+open my $pfamoutput, "./$locus.faaVSPfam-A.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVSPfam-A.hmm.hmmscanned.tab\n";
+while (<$pfamoutput>)
+{
+	next if /^\s*(#.*)?$/;
+	next if $pfamoutput =~ /^#/;
+	next if $pfamoutput =~ /^=/;
+#	if ($pfamoutput =~ /test_.*/)
+#	{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if ($columns[11] > 60)
+#	if ($columns[11])	
+        {
+		my @pfam_columns = split (/\./, $columns[5]);
+		my $pfam_id = $pfam_columns[0];
+                $hash7{$columns[0]} = $pfam_columns[0];
+                $hash7{$pfam_columns[0]} = $columns[0];
+                $hash8{$pfam_columns[0]} = "$columns[0]\t$columns[12]\t$columns[11]";
+        }
+#	}
+}
+
+#read Pfam-A.clans.tsv
+open my $pfamid2names, "/srv/db/pfam/27/Pfam-A.clans.tsv", or die "Couldn't open Pfam-A.clans.tsv\n";
+open my $pfam_temp_OUT, ">pfam_output_temp.txt";
+while (<$pfamid2names>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if (exists $hash8{$columns[0]})
+        {
+                print {$pfam_temp_OUT} "$hash8{$columns[0]}\t$columns[4]\n";
+        }
+}
+
+close($pfamoutput);
+close($pfamid2names);
+close($pfam_temp_OUT);
+
+#hashes for tigrfam
+my %hash10 = ();
+my %hash11 = ();
+my %hash12 = ();
+
+#read tigrfam hmmscan output and store in hash
+open my $tigrfamoutput, "./$locus.faaVStigr_all.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVStigr_all.hmm.hmmscanned.tab\n";
+while (<$tigrfamoutput>)
+{
+		next if /^\s*(#.*)?$/;
+        next if $tigrfamoutput =~ /^#/;
+#	next if $pfamoutput =! /TIGR/;
+#	if ($tigrfamoutput =~ /TIGR.*/)
+#	{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if ($columns[5] > 10)
+#	if ($columns[5])
+        {
+                $hash10{$columns[2]} = $columns[0];
+                $hash10{$columns[0]} = $columns[2];
+                $hash11{$columns[0]} = "$columns[2]\t$columns[5]\t$columns[4]";
+        }
+#	}
+}
+
+#read tigrfam id2names2description
+open my $tigrfamid2names, "/srv/db/tigrfam/14.0/TIGRFAMs_14.0_INFO/tigr_info_combined.parsed", or die "Couldn't open tigr_info_combined.parsed\n";
+open my $tigrfam_temp_OUT, ">tigrfam_output_temp.txt";
+while (<$tigrfamid2names>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+	#print "$columns[0]\n";
+	$columns[0] =~ s/^\s+//;
+	$columns[0] =~ s/\s+$//;
+        if (exists $hash11{$columns[0]})
+        {
+                print {$tigrfam_temp_OUT} "$hash11{$columns[0]}\t$columns[1]\t$columns[2]\n";
+        }
+}
+
+close($tigrfamoutput);
+close($tigrfamid2names);
+close($tigrfam_temp_OUT);
+
+
+
 
 ######################################################################
 # CUSTOM SUBS
