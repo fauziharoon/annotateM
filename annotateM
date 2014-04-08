@@ -30,6 +30,7 @@ use warnings;
 #core Perl modules
 use Getopt::Long;
 use Carp;
+use Data::Dumper;
 
 #CPAN modules
 
@@ -227,7 +228,7 @@ checkAndRunCommand("hmmscan",[[
 			]], DIE_ON_FAILURE);
 }
 			
-# convert the hmmscan output to tab delimited
+#convert the hmmscan output to tab delimited
 checkAndRunCommand("awk",[[
                        "'{\$1=\$1}{ print }'",
 			"$locus.faaVSPfam-A.hmm.hmmscanned",
@@ -243,12 +244,12 @@ checkAndRunCommand("awk",[[
                        ]], DIE_ON_FAILURE);
 
 
-# hashes for img
+#hashes for img
 my %hash = ();
 my %hash2 = ();
 my %hash3 =();
 
-# read the img blast output and store in hash
+#read the img blast output and store in hash
 open my $IMGblast, "./$locus.faaVSimg.blastp", or die "Couldn't open file $locus.faaVSimg.blastp\n";
 while (<$IMGblast>)
 {
@@ -298,12 +299,12 @@ while (<$rIMGblast>)
 
 close($img_temp_OUT2);
 
-# hashes for uniref	
+#hashes for uniref	
 my %hash4 = ();
 my %hash5 =();
 my %hash6 = ();
 
-# read uniref blast and store in hash
+#read uniref blast and store in hash
 open my $unirefblast, "./$locus.faaVSuniref90.blastp", or die "Couldn't open file $locus.faaVSuniref90.blastp\n";
 while (<$unirefblast>)
 {
@@ -317,7 +318,7 @@ while (<$unirefblast>)
 	}
 }
 
-# read uniref id2names.txt
+#read uniref id2names.txt
 open my $unirefid2names, "/srv/db/uniprot/uniref-20140403/uniref90_id2names.txt", or die "Couldn't open id2names.txt\n";
 open my $uniref_temp_OUT, ">uniref_output_temp.txt";
 while (<$unirefid2names>)
@@ -350,12 +351,11 @@ while (<$runirefblast>)
 
 close($uniref_temp_OUT2);
 
-# hashes for pfam
+#hashes for pfam
 my %hash7 = ();
 my %hash8 = ();
-my %hash9 = ();
 
-# read pfam hmmscan output and store in hash
+#read pfam hmmscan output and store in hash
 open my $pfamoutput, "./$locus.faaVSPfam-A.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVSPfam-A.hmm.hmmscanned.tab\n";
 while (<$pfamoutput>)
 {
@@ -396,15 +396,14 @@ close($pfamid2names);
 close($pfam_temp_OUT);
 
 #hashes for tigrfam
+my %hash9 = ();
 my %hash10 = ();
-my %hash11 = ();
-my %hash12 = ();
 
 #read tigrfam hmmscan output and store in hash
 open my $tigrfamoutput, "./$locus.faaVStigr_all.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVStigr_all.hmm.hmmscanned.tab\n";
 while (<$tigrfamoutput>)
 {
-		next if /^\s*(#.*)?$/;
+	next if /^\s*(#.*)?$/;
         next if $tigrfamoutput =~ /^#/;
 #	next if $pfamoutput =! /TIGR/;
 #	if ($tigrfamoutput =~ /TIGR.*/)
@@ -414,9 +413,9 @@ while (<$tigrfamoutput>)
         if ($columns[5] > 10)
 #	if ($columns[5])
         {
-                $hash10{$columns[2]} = $columns[0];
-                $hash10{$columns[0]} = $columns[2];
-                $hash11{$columns[0]} = "$columns[2]\t$columns[5]\t$columns[4]";
+                $hash9{$columns[2]} = $columns[0];
+                $hash9{$columns[0]} = $columns[2];
+                $hash10{$columns[0]} = "$columns[2]\t$columns[5]\t$columns[4]";
         }
 #	}
 }
@@ -431,9 +430,9 @@ while (<$tigrfamid2names>)
 	#print "$columns[0]\n";
 	$columns[0] =~ s/^\s+//;
 	$columns[0] =~ s/\s+$//;
-        if (exists $hash11{$columns[0]})
+        if (exists $hash10{$columns[0]})
         {
-                print {$tigrfam_temp_OUT} "$hash11{$columns[0]}\t$columns[1]\t$columns[2]\n";
+                print {$tigrfam_temp_OUT} "$hash10{$columns[0]}\t$columns[1]\t$columns[2]\n";
         }
 }
 
@@ -441,7 +440,178 @@ close($tigrfamoutput);
 close($tigrfamid2names);
 close($tigrfam_temp_OUT);
 
+# hashes for cog
+my %hash11 = ();
+my %hash12 = ();
+my %hash13 = ();
 
+# read cog blastp output and store in hash
+open my $cogblast, "./$locus.faaVSCOG.blastp", or die "Couldn't open file $locus.faaVSCOG.blastp\n";
+while (<$cogblast>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if ($columns[11] > 60)
+        {
+                $hash11{$columns[0]} = $columns[1];
+                $hash11{$columns[1]} = $columns[0];
+                $hash12{$columns[1]} = "$columns[0]\t$columns[10]\t$columns[11]";
+        }
+}
+
+# read cog prot2COG.tab
+open my $cogid2names, "/srv/db/cog/prot2COG.tab", or die "Couldn't open prot2COG.tab\n";
+open my $cog_temp_OUT, "> cog_output_temp.txt";
+while (<$cogid2names>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if (exists $hash12{$columns[0]})
+        {
+                $hash13{$columns[0]} = "$hash12{$columns[0]}\t$columns[1]";
+		$hash13{$columns[1]} = $hash12{$columns[0]};
+                print {$cog_temp_OUT} "$hash12{$columns[0]}\t$columns[1]\n";
+        }
+}
+
+close($cogblast);
+close($cogid2names);
+close($cog_temp_OUT);
+
+# read cog listcogs.txt
+open my $cogid2longernames, "/srv/db/cog/listcogs.txt", or die "Couldn't open listcogs.txt\n";
+open my $cog_temp_OUT2, "> cog_output_temp2.txt";
+while(<$cogid2longernames>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        if (exists $hash13{$columns[5]})
+        {
+                print {$cog_temp_OUT2} "$hash13{$columns[5]}\t$columns[3]\t$columns[4]\t$columns[6]\n";
+        }
+}
+
+close($cog_temp_OUT2);
+
+
+### now to parse all the temporary files and combine into one tab-delimited-file
+# to store the IDs => DB => values/annotations
+my %combined_bighash =();
+
+# open file for output
+open my $FINAL_OUTPUT, "> ./final_output.txt";
+# print header
+print {$FINAL_OUTPUT} "ORF_ID\t\n";
+
+# img
+open my $img_annotation, "./img_output_temp2.txt", or die "Couldn't open img_output_temp2.txt\n";
+while (<$img_annotation>)
+{
+	chomp $_;
+	my @columns = split (/\t/, $_);
+	my @baba = @columns[1..$#columns];
+	#print "@baba \n"; 
+	$combined_bighash{$columns[0]}->{'img'} = join("\t", @baba);
+}
+
+# uniref
+open my $uniref_annotation, "./uniref_output_temp2.txt", or die "Couldn't open uniref_output_temp2.txt\n";
+while (<$uniref_annotation>)
+{
+	chomp $_;
+        my @columns = split (/\t/, $_);
+	my @baba = @columns[1..$#columns];
+	$combined_bighash{$columns[0]}->{'uniref'} = join("\t", @baba);
+}
+
+# prokka
+# need to parse faa file to give prokka id2names
+checkAndRunCommand("grep",[[
+						"'>'",
+						"prokka_annotation/$locus.faa |",
+						"sed",
+						"'s/>//g' |",
+						"sed",
+						-e => "'s/ /\\t/'",
+						"> prokka_temp_output.txt",
+						]], DIE_ON_FAILURE);
+
+open my $prokka_annotation, "./prokka_temp_output.txt",  or die "Couldn't open prokka_temp_output.txt\n";
+while (<$prokka_annotation>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        my @baba = @columns[1..$#columns];
+        $combined_bighash{$columns[0]}->{'prokka'} = join("\t", @baba);
+}
+
+# cog
+open my $cog_annotation, "./cog_output_temp2.txt", or die "Couldn't open cog_output_temp2.txt\n";
+while (<$cog_annotation>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        my @baba = @columns[1..$#columns];
+        $combined_bighash{$columns[0]}->{'cog'} = join("\t", @baba);
+}
+
+# pfam
+open my $pfam_annotation, "./pfam_output_temp.txt", or die "Couldn't open pfam_output_temp.txt\n";
+while (<$pfam_annotation>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        my @baba = @columns[1..$#columns];
+        $combined_bighash{$columns[0]}->{'pfam'} = join("\t", @baba);
+}
+
+# tigrfam
+open my $tigrfam_annotation, "./tigrfam_output_temp.txt", or die "Couldn't open tigrfam_output_temp.txt\n";
+while (<$tigrfam_annotation>)
+{
+        chomp $_;
+        my @columns = split (/\t/, $_);
+        my @baba = @columns[1..$#columns];
+        $combined_bighash{$columns[0]}->{'tigrfam'} = join("\t", @baba);
+}
+
+# to print finally.................
+my %column_lengths = (
+    'img' => 5,
+    'uniref' => 5, 
+    'prokka' => 1,
+    'cog' => 5,
+    'pfam' => 3, 
+    'tigrfam' => 4,
+);
+
+foreach my $item (sort(keys %combined_bighash))
+{
+        print {$FINAL_OUTPUT} "$item\t";
+        	foreach my $annotation_type (keys %column_lengths)
+		{
+		        if (! exists $combined_bighash{$item}->{$annotation_type})
+		        {	
+		                print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
+		        }
+			else
+			{
+          		        print {$FINAL_OUTPUT} "$annotation_type = $combined_bighash{$item}{$annotation_type}\t";
+ 		       	}	
+		}
+	print {$FINAL_OUTPUT} "\n";	
+}
+
+#close all files
+close($img_annotation);
+close($uniref_annotation);
+close($prokka_annotation);
+close($cog_annotation);
+close($pfam_annotation);
+close($tigrfam_annotation);
+close($FINAL_OUTPUT);
+
+# to beautify the output
 
 
 ######################################################################
@@ -637,7 +807,7 @@ sub printAtStart {
 print<<"EOF";
 ---------------------------------------------------------------- 
  $0
- Copyright (C) Mohamed Fauzi Haroon
+ Copyright (C) Mohamed Fauzi Haroon, Yuji Sekiguchi, Adam Skarshewski
     
  This program comes with ABSOLUTELY NO WARRANTY;
  This is free software, and you are welcome to redistribute it
@@ -654,7 +824,7 @@ __DATA__
 
 =head1 COPYRIGHT
 
-   copyright (C) Mohamed Fauzi Haroon
+   Copyright (C) Mohamed Fauzi Haroon, Yuji Sekiguchi, Adam Skarshewski
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
