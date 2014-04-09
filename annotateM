@@ -3,10 +3,19 @@
 #
 #    annotateM
 #    
-#    The idea here is to produce a tab-delimited file of all the annotation
-#    pipelines for manual curation afterwards.
+#    The idea here is an automated way of annotating your genome based on 
+#    multiple available databases and to produce a tab-delimited file of 
+#    all the annotations, evalues, scores, descriptions.
+# 
+#    Suggested workflow:
+#	 1) run your genome nucleotide fasta file through annotateM
+#	 2) generate a tab-delimited file
+#	 3) open the file in ms excel or oo calc
+#	 4) manually curate the annotations based on evalues/scores/desc etc	
+#        5) metabolic reconstruction of organism
 #
 #    Copyright (C) Mohamed Fauzi Haroon
+#	 Special appearance from Adam Skarshewski
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -228,7 +237,7 @@ checkAndRunCommand("hmmscan",[[
 			]], DIE_ON_FAILURE);
 }
 			
-#convert the hmmscan output to tab delimited
+# convert the hmmscan output to tab delimited
 checkAndRunCommand("awk",[[
                        "'{\$1=\$1}{ print }'",
 			"$locus.faaVSPfam-A.hmm.hmmscanned",
@@ -244,12 +253,12 @@ checkAndRunCommand("awk",[[
                        ]], DIE_ON_FAILURE);
 
 
-#hashes for img
+# hashes for img
 my %hash = ();
 my %hash2 = ();
 my %hash3 =();
 
-#read the img blast output and store in hash
+# read the img blast output and store in hash
 open my $IMGblast, "./$locus.faaVSimg.blastp", or die "Couldn't open file $locus.faaVSimg.blastp\n";
 while (<$IMGblast>)
 {
@@ -299,12 +308,12 @@ while (<$rIMGblast>)
 
 close($img_temp_OUT2);
 
-#hashes for uniref	
+# hashes for uniref	
 my %hash4 = ();
 my %hash5 =();
 my %hash6 = ();
 
-#read uniref blast and store in hash
+# read uniref blast and store in hash
 open my $unirefblast, "./$locus.faaVSuniref90.blastp", or die "Couldn't open file $locus.faaVSuniref90.blastp\n";
 while (<$unirefblast>)
 {
@@ -318,7 +327,7 @@ while (<$unirefblast>)
 	}
 }
 
-#read uniref id2names.txt
+# read uniref id2names.txt
 open my $unirefid2names, "/srv/db/uniprot/uniref-20140403/uniref90_id2names.txt", or die "Couldn't open id2names.txt\n";
 open my $uniref_temp_OUT, ">uniref_output_temp.txt";
 while (<$unirefid2names>)
@@ -345,40 +354,36 @@ while (<$runirefblast>)
         my @columns = split (/\t/, $_);
         if (exists $hash4{$columns[0]})
         {
-                print {$uniref_temp_OUT2} "$hash6{$columns[0]}\treciprocal\n";
+            print {$uniref_temp_OUT2} "$hash6{$columns[0]}\treciprocal\n";
         }
 }
 
 close($uniref_temp_OUT2);
 
-#hashes for pfam
+# hashes for pfam
 my %hash7 = ();
 my %hash8 = ();
 
-#read pfam hmmscan output and store in hash
+# read pfam hmmscan output and store in hash
 open my $pfamoutput, "./$locus.faaVSPfam-A.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVSPfam-A.hmm.hmmscanned.tab\n";
 while (<$pfamoutput>)
 {
 	next if /^\s*(#.*)?$/;
 	next if $pfamoutput =~ /^#/;
 	next if $pfamoutput =~ /^=/;
-#	if ($pfamoutput =~ /test_.*/)
-#	{
-        chomp $_;
-        my @columns = split (/\t/, $_);
-        if ($columns[11] > 60)
-#	if ($columns[11])	
-        {
+    chomp $_;
+    my @columns = split (/\t/, $_);
+    if ($columns[11] > 60)
+    {
 		my @pfam_columns = split (/\./, $columns[5]);
 		my $pfam_id = $pfam_columns[0];
-                $hash7{$columns[0]} = $pfam_columns[0];
-                $hash7{$pfam_columns[0]} = $columns[0];
-                $hash8{$pfam_columns[0]} = "$columns[0]\t$columns[12]\t$columns[11]";
-        }
-#	}
+        $hash7{$columns[0]} = $pfam_columns[0];
+        $hash7{$pfam_columns[0]} = $columns[0];
+        $hash8{$pfam_columns[0]} = "$columns[0]\t$columns[12]\t$columns[11]";
+    }
 }
 
-#read Pfam-A.clans.tsv
+# read Pfam-A.clans.tsv
 open my $pfamid2names, "/srv/db/pfam/27/Pfam-A.clans.tsv", or die "Couldn't open Pfam-A.clans.tsv\n";
 open my $pfam_temp_OUT, ">pfam_output_temp.txt";
 while (<$pfamid2names>)
@@ -395,41 +400,35 @@ close($pfamoutput);
 close($pfamid2names);
 close($pfam_temp_OUT);
 
-#hashes for tigrfam
+# hashes for tigrfam
 my %hash9 = ();
 my %hash10 = ();
 
-#read tigrfam hmmscan output and store in hash
+# read tigrfam hmmscan output and store in hash
 open my $tigrfamoutput, "./$locus.faaVStigr_all.hmm.hmmscanned.tab", or die "Couldn't open file $locus.faaVStigr_all.hmm.hmmscanned.tab\n";
 while (<$tigrfamoutput>)
 {
 	next if /^\s*(#.*)?$/;
-        next if $tigrfamoutput =~ /^#/;
-#	next if $pfamoutput =! /TIGR/;
-#	if ($tigrfamoutput =~ /TIGR.*/)
-#	{
-        chomp $_;
-        my @columns = split (/\t/, $_);
-        if ($columns[5] > 10)
-#	if ($columns[5])
-        {
-                $hash9{$columns[2]} = $columns[0];
-                $hash9{$columns[0]} = $columns[2];
-                $hash10{$columns[0]} = "$columns[2]\t$columns[5]\t$columns[4]";
-        }
-#	}
+    next if $tigrfamoutput =~ /^#/;
+    chomp $_;
+    my @columns = split (/\t/, $_);
+    if ($columns[5] > 10)
+    {
+        $hash9{$columns[2]} = $columns[0];
+        $hash9{$columns[0]} = $columns[2];
+        $hash10{$columns[0]} = "$columns[2]\t$columns[4]\t$columns[5]";
+    }
 }
 
-#read tigrfam id2names2description
+# read tigrfam id2names2description
 open my $tigrfamid2names, "/srv/db/tigrfam/14.0/TIGRFAMs_14.0_INFO/tigr_info_combined.parsed", or die "Couldn't open tigr_info_combined.parsed\n";
 open my $tigrfam_temp_OUT, ">tigrfam_output_temp.txt";
 while (<$tigrfamid2names>)
 {
         chomp $_;
         my @columns = split (/\t/, $_);
-	#print "$columns[0]\n";
-	$columns[0] =~ s/^\s+//;
-	$columns[0] =~ s/\s+$//;
+		$columns[0] =~ s/^\s+//;
+		$columns[0] =~ s/\s+$//;
         if (exists $hash10{$columns[0]})
         {
                 print {$tigrfam_temp_OUT} "$hash10{$columns[0]}\t$columns[1]\t$columns[2]\n";
@@ -501,7 +500,7 @@ my %combined_bighash =();
 # open file for output
 open my $FINAL_OUTPUT, "> ./final_output.txt";
 # print header
-print {$FINAL_OUTPUT} "ORF_ID\t\n";
+print {$FINAL_OUTPUT} "ORF_ID\timg_evalue\timg_score\timg_gene\timg_organism\timg_reciprocal\tuniref_evalue\tuniref_score\tuniref_gene\tuniref_organism\tuniref_reciprocal\tprokka_gene\tcog_evalues\tcog_scores\tcog_classes\tcog_gene_acronyms\tcog_genes\tpfam_evalues\tpfam_scores\tpfam_genes\ttigrfam_evalues\ttigrfam_scores\ttigrfam_genes\ttigrfam_descriptions\n";
 
 # img
 open my $img_annotation, "./img_output_temp2.txt", or die "Couldn't open img_output_temp2.txt\n";
@@ -511,7 +510,8 @@ while (<$img_annotation>)
 	my @columns = split (/\t/, $_);
 	my @baba = @columns[1..$#columns];
 	#print "@baba \n"; 
-	$combined_bighash{$columns[0]}->{'img'} = join("\t", @baba);
+	#$combined_bighash{$columns[0]}->{'img'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'a-img'}}, join("\t", @baba);
 }
 
 # uniref
@@ -521,7 +521,8 @@ while (<$uniref_annotation>)
 	chomp $_;
         my @columns = split (/\t/, $_);
 	my @baba = @columns[1..$#columns];
-	$combined_bighash{$columns[0]}->{'uniref'} = join("\t", @baba);
+	#$combined_bighash{$columns[0]}->{'uniref'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'b-uniref'}}, join("\t", @baba);
 }
 
 # prokka
@@ -542,7 +543,8 @@ while (<$prokka_annotation>)
         chomp $_;
         my @columns = split (/\t/, $_);
         my @baba = @columns[1..$#columns];
-        $combined_bighash{$columns[0]}->{'prokka'} = join("\t", @baba);
+       	#$combined_bighash{$columns[0]}->{'prokka'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'c-prokka'}}, join("\t", @baba);
 }
 
 # cog
@@ -552,7 +554,8 @@ while (<$cog_annotation>)
         chomp $_;
         my @columns = split (/\t/, $_);
         my @baba = @columns[1..$#columns];
-        $combined_bighash{$columns[0]}->{'cog'} = join("\t", @baba);
+	#$combined_bighash{$columns[0]}->{'cog'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'d-cog'}}, join("\t", @baba);
 }
 
 # pfam
@@ -562,8 +565,10 @@ while (<$pfam_annotation>)
         chomp $_;
         my @columns = split (/\t/, $_);
         my @baba = @columns[1..$#columns];
-        $combined_bighash{$columns[0]}->{'pfam'} = join("\t", @baba);
+        #$combined_bighash{$columns[0]}->{'pfam'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'e-pfam'}}, join("\t", @baba); 
 }
+#print Dumper \%combined_bighash;
 
 # tigrfam
 open my $tigrfam_annotation, "./tigrfam_output_temp.txt", or die "Couldn't open tigrfam_output_temp.txt\n";
@@ -572,31 +577,67 @@ while (<$tigrfam_annotation>)
         chomp $_;
         my @columns = split (/\t/, $_);
         my @baba = @columns[1..$#columns];
-        $combined_bighash{$columns[0]}->{'tigrfam'} = join("\t", @baba);
+        #$combined_bighash{$columns[0]}->{'tigrfam'} = join("\t", @baba);
+	push @{$combined_bighash{$columns[0]}->{'f-tigrfam'}}, join("\t", @baba);
 }
 
 # to print finally.................
+# assign key and value for number of expected columns for each annotation type, important for putting NA in missing annotation types
 my %column_lengths = (
-    'img' => 5,
-    'uniref' => 5, 
-    'prokka' => 1,
-    'cog' => 5,
-    'pfam' => 3, 
-    'tigrfam' => 4,
+    'a-img' => 5,
+    'b-uniref' => 5, 
+    'c-prokka' => 1,
+    'd-cog' => 5,
+    'e-pfam' => 3, 
+    'f-tigrfam' => 4,
 );
 
-foreach my $item (sort(keys %combined_bighash))
+# print the orfids first 
+foreach my $ID (sort(keys %combined_bighash))
 {
-        print {$FINAL_OUTPUT} "$item\t";
-        	foreach my $annotation_type (keys %column_lengths)
+        print {$FINAL_OUTPUT} "$ID\t";
+        foreach my $annotation_type (sort(keys %column_lengths))
 		{
-		        if (! exists $combined_bighash{$item}->{$annotation_type})
+		        # if the annotation type does not exist, print NA in the columns depending on the %column_lengths hash values above
+				if (! exists $combined_bighash{$ID}->{$annotation_type})
 		        {	
-		                print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
+		                # cool way of printing a certain string multiple times based on the values in the hash
+						print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
 		        }
-			else
-			{
-          		        print {$FINAL_OUTPUT} "$annotation_type = $combined_bighash{$item}{$annotation_type}\t";
+				# check the derefencing made with @{$combined_bighash{$columns[0]}->{'f-tigrfam'}} and so on..
+				# the derefencing allows the hash be converted into an array so that we can read the hash for the different types of annotation types
+				elsif (ref($combined_bighash{$ID}->{$annotation_type}) eq 'ARRAY')
+				{
+				# place to store the columns in the values of the hash annotation types
+                my @storage_array;
+  				foreach my $line (@{$combined_bighash{$ID}->{$annotation_type}}) 
+				{
+                        # each annotation types have different number of columns, so we need to split the columns first before
+						# we can add in the extra values if lets say an orfid hits multiple pfam/cog/tigrfam values
+						my @values = split("\t",$line);
+						# cool and alternate way of doing columns[1] = values[1], and so on.., repetitively 
+						# what it basically means as long as the value i less than the number of columns in each annotation type, 
+						# add +1 to the string $i and do the push below
+						for (my $i = 0; $i <= $#values; $i++) 
+						{
+							push @{$storage_array[$i]}, $values[$i];
+						}
+				}
+				#print Dumper(\@storage_array);
+                # array to store the multiple hits in each column.. for example test0001 orfid hits multiple pfam values like pf0008 anf pf0010 etc..
+				# so we would like to have the values combined together in the same column delimited by a comma
+				my @print_info_array;
+				for (my $i = 0; $i < $column_lengths{$annotation_type}; $i++) 
+						{
+                                    push @print_info_array, join(", ", @{$storage_array[$i]});
+                        }
+                        #print Dumper(\@print_info_array);
+                        print {$FINAL_OUTPUT} join("\t", @print_info_array), "\t";
+                                	
+						} 
+				else
+				{
+          		        print {$FINAL_OUTPUT} "$combined_bighash{$ID}{$annotation_type}\t";
  		       	}	
 		}
 	print {$FINAL_OUTPUT} "\n";	
@@ -611,12 +652,12 @@ close($pfam_annotation);
 close($tigrfam_annotation);
 close($FINAL_OUTPUT);
 
-# to beautify the output
-
 
 ######################################################################
 # CUSTOM SUBS
 ######################################################################
+
+# who needs custom subs...
 
 ######################################################################
 # TEMPLATE SUBS
@@ -672,7 +713,7 @@ sub overrideDefault
     return $default_value;
 }
 
-######################################################################
+#####################################################################
 # FILE IO
 
 sub openWrite
@@ -807,11 +848,10 @@ sub printAtStart {
 print<<"EOF";
 ---------------------------------------------------------------- 
  $0
- Copyright (C) Mohamed Fauzi Haroon, Yuji Sekiguchi, Adam Skarshewski
-    
- This program comes with ABSOLUTELY NO WARRANTY;
- This is free software, and you are welcome to redistribute it
- under certain conditions: See the source for more details.
+ annotateM - annotate my genome
+ Due to the blast processes against multiple databases, this whole
+ annotation pipeline will usually take awhile. Please be patient!
+ 
 ---------------------------------------------------------------- 
 EOF
 }
@@ -824,7 +864,8 @@ __DATA__
 
 =head1 COPYRIGHT
 
-   Copyright (C) Mohamed Fauzi Haroon, Yuji Sekiguchi, Adam Skarshewski
+   Copyright (C) Mohamed Fauzi Haroon
+   Special appearance from Adam Skarshewski
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -845,14 +886,14 @@ __DATA__
 
 =head1 SYNOPSIS
 
-    annotateM -i fasta_file 
+    annotateM -i [fasta_file] -l [locus] -k [Bacteria|Archaea] -t [threads] -e [evalue]
 
-      -i FASTA_FILE		   	Nucleotide fasta file 
-      -l locustag		   	Name of locus tag
-      -k kingdom (Bacteria/Archaea) 	Kingdom of genome to be annotated
-      -t threads			Number of threads
-      -e evalue				Evalue for BLAST, recommend 1e-3	
-      [-help -h]                   	Displays basic usage information
+      -i FASTA_FILE				Nucleotide fasta file 
+      -l locustag				Name of locus tag
+      -k kingdom (Bacteria/Archaea)		Kingdom of genome to be annotated
+      -t threads				Number of threads
+      -e evalue					Evalue for BLAST, recommended 1e-3	
+      [-help -h]				Displays basic usage information
          
 =cut
 
