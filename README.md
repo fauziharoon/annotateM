@@ -8,7 +8,7 @@ The ORFs are called differently and why are there more ORFs called in this progr
 Would you like to have a unified automated annotation pipeline that searches against the currently existing databases
 like IMG, Uniref, COG, Pfam, TIGRfam?
 
-If yes is your answer to anyt of these questions? 
+If yes is your answer to any of these questions? 
 
 Try annotateM.
 
