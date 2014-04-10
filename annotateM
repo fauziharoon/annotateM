@@ -73,6 +73,9 @@ my $global_options = checkParams();
 # check that the file exists
 checkFileExists($global_options->{'in'});
 
+if (! -e "./prokka_annotation/")
+{
+print "prokka\n";
 # run prokka to generate the ORFs and also prokka annotations
 checkAndRunCommand("prokka", [{
                                    "--locustag" =>  $global_options->{'locustag'},
@@ -83,6 +86,7 @@ checkAndRunCommand("prokka", [{
 				   "--keep_names",
 				   $global_options->{'in'},	
                                    }], DIE_ON_FAILURE);
+}
 
 # identify the ORF called amino acid fasta file for blast-ing
 my $locus = $global_options->{'locustag'};
@@ -228,10 +232,12 @@ if (! -e "./$locus.faaVStigr_all.hmm.hmmscanned")
 {
 print "HMMscanning against TIGRfam database................\n";
 checkAndRunCommand("hmmscan",[[
-			"--tblout" => "$locus.faaVStigr_all.hmm.hmmscanned",
+			"--tblout",
+			"$locus.faaVStigr_all.hmm.hmmscanned",
 			"--noali",
 			-E => $global_options->{'evalue'},
-			"--cpu" => $global_options->{'threads'},
+			"--cpu",
+			 $global_options->{'threads'},
 			"/srv/db/tigrfam/14.0/TIGRFAMs_14.0_HMM/tigr_all.hmm",
 			"prokka_annotation/$locus.faa",
 			]], DIE_ON_FAILURE);
