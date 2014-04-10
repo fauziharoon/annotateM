@@ -1,4 +1,4 @@
-annotateM
+##  annotateM
 =========
 
 Have you been having problems annotating your genome? 
@@ -12,20 +12,20 @@ If yes is your answer to any of these questions?
 
 Try annotateM.
 
-Dependencies:
-1) prokka
-2) blast
-3) hmmer
-4) Pfam_scan
-5) contig_extractor
-6) parallel
+**Dependencies:**
+1. prokka
+2. blast
+3. hmmer
+4. Pfam_scan
+5. contig_extractor
+6. parallel
 
-Database files:
-1) IMG
-2) Uniref90
-3) COG
-4) Pfam
-5) TIGRfam
+**Database files:**
+1. IMG
+2. Uniref90
+3. COG
+4. Pfam
+5. TIGRfam
 
 In the near future, we will be adding more databases for searching, including RAST and KEGG.
 Would you like to make the program better? Feel free to do so and don't forget to git push afterwards.
