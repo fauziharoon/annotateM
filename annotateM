@@ -604,46 +604,45 @@ foreach my $ID (sort(keys %combined_bighash))
         print {$FINAL_OUTPUT} "$ID\t";
         foreach my $annotation_type (sort(keys %column_lengths))
 		{
-		        # if the annotation type does not exist, print NA in the columns depending on the %column_lengths hash values above
-				if (! exists $combined_bighash{$ID}->{$annotation_type})
+		        # if the annotation type does not exist, print NA in the columns depending on the %column_lengths hash values
+			if (! exists $combined_bighash{$ID}->{$annotation_type})
 		        {	
 		                # cool way of printing a certain string multiple times based on the values in the hash
-						print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
+				print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
 		        }
-				# check the derefencing made with @{$combined_bighash{$columns[0]}->{'f-tigrfam'}} and so on..
-				# the derefencing allows the hash be converted into an array so that we can read the hash for the different types of annotation types
-				elsif (ref($combined_bighash{$ID}->{$annotation_type}) eq 'ARRAY')
+			# check the derefencing made with @{$combined_bighash{$columns[0]}->{'f-tigrfam'}} and so on..
+			# the derefencing allows the hash be converted into an array so that we can read the hash for the different types of annotation types
+			elsif (ref($combined_bighash{$ID}->{$annotation_type}) eq 'ARRAY')
+			{
+			# place to store the columns in the values of the hash annotation types
+                	my @storage_array;
+  			foreach my $line (@{$combined_bighash{$ID}->{$annotation_type}}) 
+			{
+                        	# each annotation types have different number of columns, so we need to split the columns first before
+				# we can add in the extra values if lets say an orfid hits multiple pfam/cog/tigrfam values
+				my @values = split("\t",$line);
+				# cool and alternate way of doing columns[1] = values[1], and so on.., repetitively 
+				# what it basically means as long as the value i less than the number of columns in each annotation type
+				# add +1 to the string $i and do the push below
+				for (my $i = 0; $i <= $#values; $i++) 
 				{
-				# place to store the columns in the values of the hash annotation types
-                my @storage_array;
-  				foreach my $line (@{$combined_bighash{$ID}->{$annotation_type}}) 
-				{
-                        # each annotation types have different number of columns, so we need to split the columns first before
-						# we can add in the extra values if lets say an orfid hits multiple pfam/cog/tigrfam values
-						my @values = split("\t",$line);
-						# cool and alternate way of doing columns[1] = values[1], and so on.., repetitively 
-						# what it basically means as long as the value i less than the number of columns in each annotation type, 
-						# add +1 to the string $i and do the push below
-						for (my $i = 0; $i <= $#values; $i++) 
-						{
-							push @{$storage_array[$i]}, $values[$i];
-						}
+					push @{$storage_array[$i]}, $values[$i];
 				}
-				#print Dumper(\@storage_array);
-                # array to store the multiple hits in each column.. for example test0001 orfid hits multiple pfam values like pf0008 anf pf0010 etc..
-				# so we would like to have the values combined together in the same column delimited by a comma
-				my @print_info_array;
-				for (my $i = 0; $i < $column_lengths{$annotation_type}; $i++) 
-						{
-                                    push @print_info_array, join(", ", @{$storage_array[$i]});
+			}
+			#print Dumper(\@storage_array);
+                	# array to store the multiple hits in each column.. for example test0001 orfid hits multiple pfam values like pf0008 anf pf0010 etc..
+			# so we would like to have the values combined together in the same column delimited by a comma
+			my @print_info_array;
+			for (my $i = 0; $i < $column_lengths{$annotation_type}; $i++) 
+			{
+                        	push @print_info_array, join(", ", @{$storage_array[$i]});
                         }
                         #print Dumper(\@print_info_array);
                         print {$FINAL_OUTPUT} join("\t", @print_info_array), "\t";
-                                	
-						} 
-				else
-				{
-          		        print {$FINAL_OUTPUT} "$combined_bighash{$ID}{$annotation_type}\t";
+			} 
+			else
+			{
+          		print {$FINAL_OUTPUT} "$combined_bighash{$ID}{$annotation_type}\t";
  		       	}	
 		}
 	print {$FINAL_OUTPUT} "\n";	
