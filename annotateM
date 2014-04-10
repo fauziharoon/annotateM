@@ -75,7 +75,7 @@ checkFileExists($global_options->{'in'});
 
 if (! -e "./prokka_annotation/")
 {
-print "prokka\n";
+#print "prokka\n";
 # run prokka to generate the ORFs and also prokka annotations
 checkAndRunCommand("prokka", [{
                                    "--locustag" =>  $global_options->{'locustag'},
