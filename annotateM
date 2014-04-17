@@ -9,10 +9,11 @@
 # 
 #    Suggested workflow:
 #	 1) run your genome nucleotide fasta file through annotateM
-#	 2) generate a tab-delimited file
-#	 3) open the file in ms excel or oo calc
-#	 4) manually curate the annotations based on evalues/scores/desc etc	
-#        5) metabolic reconstruction of organism
+#	 2) then run post_annotateM to include the contig id,orf_start and end
+#	 3) generate a tab-delimited file
+#	 4) open the file in ms excel or oo calc
+#	 5) manually curate the annotations based on evalues/scores/desc etc	
+#        6) metabolic reconstruction of organism
 #
 #    Copyright (C) Mohamed Fauzi Haroon
 #	 Special appearance from Adam Skarshewski
