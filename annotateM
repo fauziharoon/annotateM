@@ -2,17 +2,17 @@
 ###############################################################################
 #
 #    annotateM
-#    
-#    The idea here is an automated way of annotating your genome based on 
-#    multiple available databases and to produce a tab-delimited file of 
+#
+#    The idea here is an automated way of annotating your genome based on
+#    multiple available databases and to produce a tab-delimited file of
 #    all the annotations, evalues, scores, descriptions.
-# 
+#
 #    Suggested workflow:
 #	 1) run your genome nucleotide fasta file through annotateM
 #	 2) then run post_annotateM to include the contig id,orf_start and end
 #	 3) generate a tab-delimited file
 #	 4) open the file in ms excel or oo calc
-#	 5) manually curate the annotations based on evalues/scores/desc etc	
+#	 5) manually curate the annotations based on evalues/scores/desc etc
 #        6) metabolic reconstruction of organism
 #
 #    Copyright (C) Mohamed Fauzi Haroon
@@ -53,7 +53,7 @@ BEGIN {
     $| = 1;
 }
 
-# edit here to log all external commands 
+# edit here to log all external commands
 my $global_log_commands = 0;
 
 # ext command failure levels
@@ -66,6 +66,9 @@ use constant {
 # get input params and print copyright
 printAtStart();
 my $global_options = checkParams();
+
+# Database paths
+my $img_protein_database = '/srv/db/img/4.1/dereplicated/img_dereplicated_species.genes.faa'
 
 ######################################################################
 # CODE HERE
@@ -84,27 +87,28 @@ if (! -e "./prokka_annotation/")
 				   "--prefix" => $global_options->{'locustag'},
 				   "--kingdom" =>  $global_options->{'kingdom'},
 				   "--cpus" =>  $global_options->{'threads'},
-				   $global_options->{'in'},	
+				   $global_options->{'in'},
                                    }], DIE_ON_FAILURE);
 }
 
-# identify the ORF called amino acid fasta file 
+# identify the ORF called amino acid fasta file
 my $locus = $global_options->{'locustag'};
 
 # blast against img
 if (! -e "./$locus.faaVSimg.blastp")
 {
 	print "BLASTing against IMG 4.1 database...............\n";
-	checkAndRunCommand("cat", 
-			[[ 
-			"prokka_annotation/$locus.faa |",	
+	checkAndRunCommand("cat",
+			[[
+			"prokka_annotation/$locus.faa |",
 			"parallel",
-			"--block"=> "100k", 
+      "-j" => $global_options->{'threads'},
+			"--block"=> "100k",
 			"--recstart",
 			"'>'",
 			"--pipe",
 			"blastp",
-			-db => "/srv/db/img/4.1/blastdbs/prokaryotic.genes.finished.faa",
+			-db => $img_protein_database,
 			-outfmt => 6,
 			-max_target_seqs => 1,
 			-evalue => $global_options->{'evalue'},
@@ -120,7 +124,7 @@ if (! -e "./subsetimg.faaVS$locus.faa.blastp")
 	checkAndRunCommand("contig_extractor.pl",
 			[[
 			-i => "$locus.faaVSimg.blastp",
-			-d => "/srv/db/img/4.1/blastdbs/prokaryotic.genes.finished.faa",
+			-d => $img_protein_database,
 			-b => '',
 			-S => '',
 			-o => "subsetimg.faa",
@@ -144,13 +148,14 @@ if (! -e "./subsetimg.faaVS$locus.faa.blastp")
 			]], DIE_ON_FAILURE);
 }
 
-# blast against uniref				
+# blast against uniref
 if (! -e "./$locus.faaVSuniref90.blastp")
 {
 	print "BLASTing against latest Uniref90 April2014 database ................\n";
 	checkAndRunCommand("cat",[[
 			"prokka_annotation/$locus.faa |",
                         "parallel",
+                        "-j" => $global_options->{'threads'},
                         "--block"=> "100k",
                         "--recstart",
                         "'>'",
@@ -198,6 +203,7 @@ if (! -e "./$locus.faaVSCOG.blastp")
 	checkAndRunCommand("cat",[[
                         "prokka_annotation/$locus.faa |",
                         "parallel",
+                        "-j" => $global_options->{'threads'},
                         "--block"=> "100k",
                         "--recstart",
                         "'>'",
@@ -218,7 +224,7 @@ if (! -e "./$locus.faaVSPfam-A.hmm.hmmscanned")
 {
 	print "HMMscanning against latest Pfam 27 database................\n";
 	checkAndRunCommand("pfam_scan.pl",[[
-			-cpu => $global_options->{'threads'}, 
+			-cpu => $global_options->{'threads'},
 			-e_seq => $global_options->{'evalue'},
 			-outfile => "$locus.faaVSPfam-A.hmm.hmmscanned",
 			-fasta => "prokka_annotation/$locus.faa",
@@ -241,7 +247,7 @@ if (! -e "./$locus.faaVStigr_all.hmm.hmmscanned")
 			"prokka_annotation/$locus.faa",
 			]], DIE_ON_FAILURE);
 }
-			
+
 # convert the hmmscan output to tab delimited
 checkAndRunCommand("awk",[[
                        "'{\$1=\$1}{ print }'",
@@ -267,7 +273,7 @@ my %imghash2 =();
 #my @orfid = ();
 
 # read the img blast output and store in hash
-# SAMPLE img blast output - 
+# SAMPLE img blast output -
 # phycis_04080    649633083|649978419     38.08   1116    640     14      13      1099    1       1094    0.0      663
 # phycis_04081    649633083|649980044     28.40   405     237     10      49      422     20      402     3e-27    119
 # phycis_04082    649633030|649661236     42.86   259     144     3       1       256     1       258     1e-61    205
@@ -316,7 +322,7 @@ while (<$imgid2names>)
 			foreach my $orfid (keys $access2imgid{$columns[0]})
 			{
 			#print "$orfid\n";
-			$img2reciprocal{$columns[0]} = "$access2imgid{$columns[0]}{$orfid}\t$columns[1]\t$columns[2]";	
+			$img2reciprocal{$columns[0]} = "$access2imgid{$columns[0]}{$orfid}\t$columns[1]\t$columns[2]";
 			print {$img_temp_OUT} "$access2imgid{$columns[0]}{$orfid}\t$columns[1]\t$columns[2]\n";
 			#$img2reciprocal{$columns[0]} = "$orfid\t$columns[1]\t$columns[2]";
 			#print {$img_temp_OUT} "$orfid\t$columns[1]\t$columns[2]\n";
@@ -346,17 +352,17 @@ while (<$rIMGblast>)
 	if (exists $img2reciprocal{$columns[0]})
 	{
 		print {$img_temp_OUT2} $img2reciprocal{$columns[0]} . "\treciprocal\n";
-	}		
+	}
 	else
 	{
 		print {$img_temp_OUT2} "$columns[0]\t$columns[1]\tNA\tNA\tNA\tNA\tNOT reciprocal\n";
-	}	
-	
+	}
+
 }
 
 close($img_temp_OUT2);
 
-# hashes for uniref	
+# hashes for uniref
 my %hash4 = ();
 my %hash5 =();
 my %hash6 = ();
@@ -559,7 +565,7 @@ while (<$img_annotation>)
 	my @columns = split (/\t/, $_);
 #	my @baba = @columns[1..$#columns];
 	my @baba = @columns[2..$#columns];
-	#print "@baba \n"; 
+	#print "@baba \n";
 	#$combined_bighash{$columns[0]}->{'img'} = join("\t", @baba);
 	push @{$combined_bighash{$columns[1]}->{'a-img'}}, join("\t", @baba);
 }
@@ -635,7 +641,7 @@ while (<$pfam_annotation>)
         my @columns = split (/\t/, $_);
         my @baba = @columns[1..$#columns];
         #$combined_bighash{$columns[0]}->{'pfam'} = join("\t", @baba);
-	push @{$combined_bighash{$columns[0]}->{'e-pfam'}}, join("\t", @baba); 
+	push @{$combined_bighash{$columns[0]}->{'e-pfam'}}, join("\t", @baba);
 }
 #print Dumper \%combined_bighash;
 
@@ -654,14 +660,14 @@ while (<$tigrfam_annotation>)
 # assign key and value for number of expected columns for each annotation type, important for putting NA in missing annotation types
 my %column_lengths = (
     'a-img' => 5,
-    'b-uniref' => 5, 
+    'b-uniref' => 5,
     'c-prokka' => 1,
     'd-cog' => 5,
-    'e-pfam' => 3, 
+    'e-pfam' => 3,
     'f-tigrfam' => 4,
 );
 
-# print the orfids first 
+# print the orfids first
 foreach my $ID (sort(keys %combined_bighash))
 {
         print {$FINAL_OUTPUT} "$ID\t";
@@ -669,7 +675,7 @@ foreach my $ID (sort(keys %combined_bighash))
 	{
 	        # if the annotation type does not exist, print NA in the columns depending on the %column_lengths hash values
 		if (! exists $combined_bighash{$ID}->{$annotation_type})
-	        {	
+	        {
 			# cool way of printing a certain string multiple times based on the values in the hash
 			print {$FINAL_OUTPUT} join("\t", ("NA",) x $column_lengths{$annotation_type}), "\t";
 		}
@@ -679,15 +685,15 @@ foreach my $ID (sort(keys %combined_bighash))
 		{
 			# place to store the columns in the values of the hash annotation types
                 	my @storage_array;
-  			foreach my $line (@{$combined_bighash{$ID}->{$annotation_type}}) 
+  			foreach my $line (@{$combined_bighash{$ID}->{$annotation_type}})
 			{
                         	# each annotation types have different number of columns, so we need to split the columns first before
 				# we can add in the extra values if lets say an orfid hits multiple pfam/cog/tigrfam values
 				my @values = split("\t",$line);
-				# cool and alternate way of doing columns[1] = values[1], and so on.., repetitively 
+				# cool and alternate way of doing columns[1] = values[1], and so on.., repetitively
 				# what it basically means as long as the value i less than the number of columns in each annotation type
 				# add +1 to the string $i and do the push below
-				for (my $i = 0; $i <= $#values; $i++) 
+				for (my $i = 0; $i <= $#values; $i++)
 				{
 					push @{$storage_array[$i]}, $values[$i];
 				}
@@ -696,19 +702,19 @@ foreach my $ID (sort(keys %combined_bighash))
                 	# array to store the multiple hits in each column. eg. test0001 orfid hits multiple pfam values pf0008 & pf0010
 			# so we would like to have the values combined together in the same column delimited by a comma
 			my @print_info_array;
-			for (my $i = 0; $i < $column_lengths{$annotation_type}; $i++) 
+			for (my $i = 0; $i < $column_lengths{$annotation_type}; $i++)
 			{
                         	push @print_info_array, join("; ", @{$storage_array[$i]});
                         }
                         #print Dumper(\@print_info_array);
                         print {$FINAL_OUTPUT} join("\t", @print_info_array), "\t";
-		} 
+		}
 		else
 		{
           		print {$FINAL_OUTPUT} "$combined_bighash{$ID}{$annotation_type}\t";
- 		}	
+ 		}
 	}
-	print {$FINAL_OUTPUT} "\n";	
+	print {$FINAL_OUTPUT} "\n";
 }
 
 #close all files
@@ -741,7 +747,7 @@ sub checkParams {
     my %options;
 
     # Add any other command line options, and the code to handle them
-    # 
+    #
     GetOptions( \%options, @standard_options );
 
     # if no arguments supplied print the usage and exit
@@ -751,7 +757,7 @@ sub checkParams {
     # If the -help option is set, print the usage and exit
     #
     exec("pod2usage $0") if $options{'help'};
-    
+
     # Compulsory items
     #if(!exists $options{''} ) { printParamError (""); }
     if(!exists $options{'in'} ) { printParamError ("You MUST supply a fasta file"); }
@@ -763,8 +769,8 @@ sub printParamError
 {
     #-----
     # What to do if there's something wrong with a parameter
-    #  
-    my ($error) = @_;  
+    #
+    my ($error) = @_;
     print "**ERROR: $0 : $error\n"; exec("pod2usage $0");
 }
 
@@ -774,7 +780,7 @@ sub overrideDefault
     # Set and override default values for parameters
     #
     my ($default_value, $option_name) = @_;
-    if(exists $global_options->{$option_name}) 
+    if(exists $global_options->{$option_name})
     {
         return $global_options->{$option_name};
     }
@@ -795,7 +801,7 @@ sub openWrite
 }
 
 sub openRead
-{   
+{
     #-----
     # Open a file for reading
     #
@@ -809,7 +815,7 @@ sub openRead
 #
 # checkAndRunCommand("ls", {
 #                          -a => ""
-#                          }, 
+#                          },
 #                          WARN_ON_FAILURE);
 
 sub checkFileExists {
@@ -859,15 +865,15 @@ sub checkAndRunCommand
     # Run external commands more sanelier
     #
     my ($cmd, $params, $failure_type) = @_;
-    
+
     isCommandInPath($cmd, $failure_type);
-    
+
     # join the parameters to the command
     my $param_str = join " ", map {formatParams($_)} @{$params};
 
     my $cmd_str = $cmd . " " . $param_str;
-    
-    print "The command currently running:\t$cmd_str\n"; 
+
+    print "The command currently running:\t$cmd_str\n";
     logExternalCommand($cmd_str);
 
     # make sure that all went well
@@ -879,11 +885,11 @@ sub checkAndRunCommand
 sub formatParams {
 
     #---------
-    # Handles and formats the different ways of passing parameters to 
+    # Handles and formats the different ways of passing parameters to
     # checkAndRunCommand
     #
     my $ref = shift;
-    
+
     if (ref($ref) eq "ARRAY") {
         return join(" ", @{$ref});
     } elsif (ref($ref) eq "HASH") {
@@ -914,15 +920,15 @@ sub handleCommandFailure {
 
 sub printAtStart {
 print<<"EOF";
----------------------------------------------------------------- 
- 
+----------------------------------------------------------------
+
  $0
  annotateM - annotate my genome
  Due to the blast processes against multiple databases, this whole
  annotation pipeline will usually take awhile. Please be patient!
  What you get in the end will save you heaps of time.
- 
----------------------------------------------------------------- 
+
+----------------------------------------------------------------
 EOF
 }
 
@@ -958,13 +964,13 @@ __DATA__
 
     annotateM -i [fasta_file] -l [locus] -k [kingdom] -t [threads] -e [evalue]
 
-      -i FASTA_FILE					Nucleotide fasta file 
+      -i FASTA_FILE					Nucleotide fasta file
       -l locustag					Name of locus tag
       -k kingdom (Bacteria/Archaea/Phage/Viruses)	Kingdom of genome to be annotated
       -t threads					Number of threads
-      -e evalue						Evalue for BLAST, recommended 1e-3	
+      -e evalue						Evalue for BLAST, recommended 1e-3
       [-help -h]					Displays basic usage information
-         
+
 =cut
 
 
